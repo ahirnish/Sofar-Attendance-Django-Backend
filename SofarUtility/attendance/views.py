@@ -1,0 +1,91 @@
+from django.shortcuts import render
+
+# Create your views here.
+
+from rest_framework import generics
+from rest_framework import permissions
+from .models import Event, Person, Attendance
+from .serializers import EventSerializer, PersonSerializer, AttendanceSerializer
+from rest_framework.response import Response
+from rest_framework.views import status
+from django.contrib.auth import authenticate, login, logout
+from django.views.generic.base import RedirectView
+import datetime
+
+class EventCreateView(generics.CreateAPIView):
+    """
+    POST event/
+    """    
+    serializer_class = EventSerializer
+
+    def post(self, request, *args, **kwargs):
+        day = request.data.get("day", "")
+        month = request.data.get("month", "")
+        year = request.data.get("year", "")
+        location = request.data.get("location", "")
+        
+        if not day or not month or not year or not location:
+            return Response(data={"message": "need complete date and location of the event"}, status=status.HTTP_400_BAD_REQUEST)
+
+        date = datetime.date(day=int(day), month=int(month), year=int(year))
+        event_serializer = self.serializer_class(data={'date':date, 'location':location})
+        if event_serializer.is_valid():
+            event_serializer.save()
+            return Response(data=event_serializer.data, status=status.HTTP_201_CREATED)
+        else:
+            return Response(data=event_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+class EventAllView(generics.ListAPIView):
+    """
+    GET event/all/
+    """
+    serializer_class = EventSerializer
+    queryset = Event.objects.all()
+
+
+class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    GET event/<int:year>/<int:month>/<int:day>/
+    PUT event/<int:year>/<int:month>/<int:day>/
+    DELETE event/<int:year>/<int:month>/<int:day>/
+    """
+    queryset = Event.objects.all()
+    serializer_class = EventSerializer
+
+    def get(self, request, *args, **kwargs):
+        date = datetime.date(day=kwargs["day"], month=kwargs["month"], year=kwargs["year"])
+        try:
+            event_obj = self.queryset.get(date=date)
+            return Response(self.serializer_class(event_obj).data)
+        except Event.DoesNotExist:
+            return Response(data={"message": "event on {}/{}/{} does not exist".format(kwargs["day"], kwargs["month"], kwargs["year"])}, status=status.HTTP_404_NOT_FOUND)
+
+    def put(self, request, *args, **kwargs):
+        date = datetime.date(day=kwargs["day"], month=kwargs["month"], year=kwargs["year"])
+        try:
+            event_obj = self.queryset.get(date=date)
+            day = request.data.get("day", kwargs["day"])
+            month = request.data.get("month", kwargs["month"])
+            year = request.data.get("year", kwargs["year"])
+            update_location = request.data.get("location", event_obj.location)
+            update_date = datetime.date(day=int(day), month=int(month), year=int(year))
+            if update_date == date and update_location == event_obj.location:
+                return Response(data={"message": "event with date {}/{}/{} and location {} already exists".format(day, month, year, update_location)}, status=status.HTTP_400_BAD_REQUEST)
+            event_serializer = self.serializer_class(instance=event_obj, data={'date':update_date, 'location':update_location})
+            if event_serializer.is_valid():
+                event_serializer.save()
+                return Response(data=event_serializer.data)
+            else:
+                return Response(data=event_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        except Event.DoesNotExist:
+            return Response(data={"message": "event on {}/{}/{} does not exist".format(kwargs["day"], kwargs["month"], kwargs["year"])}, status=status.HTTP_404_NOT_FOUND)
+
+    def delete(self, request, *args, **kwargs):
+        date = datetime.date(day=kwargs["day"], month=kwargs["month"], year=kwargs["year"])
+        try:
+            event_obj = self.queryset.get(date=date)
+            event_obj.delete()
+            return Response(data={"message": "event on {}/{}/{} deleted".format(kwargs["day"], kwargs["month"], kwargs["year"])}, status=status.HTTP_204_NO_CONTENT)
+        except Event.DoesNotExist:
+            return Response(data={"message": "event on {}/{}/{} does not exist".format(kwargs["day"], kwargs["month"], kwargs["year"])}, status=status.HTTP_404_NOT_FOUND)
+        

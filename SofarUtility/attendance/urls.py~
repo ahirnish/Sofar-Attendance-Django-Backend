@@ -1,0 +1,7 @@
+from django.urls import path
+from .views import EventCreateView, EventDetailView
+
+urlpatterns= [
+    path('event/', EventCreateView.as_view(), name="event-create"),
+    path('event/<int:year>/<int:month>/<int:day>/', EventDetailView.as_view(), name="event-detail"),
+]

@@ -1,0 +1,30 @@
+from rest_framework import serializers
+from .models import Event, Person, Attendance
+
+class EventSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Event model
+    """
+    class Meta:
+        model = Event
+        fields = ("date", "location")
+
+class PersonSerializer(serializers.ModelSerializer):
+    """
+    Serializer for Person model
+    """
+    class Meta:
+        model = Person
+        fields = ("first_name", "last_name", "email")
+
+class AttendanceSerializer(serializers.ModelSerializer)
+    """
+    Serializer for Attendance model
+    """
+    event = EventSerializer()
+    person = PersonSerializer()
+    
+    class Meta:
+        model = Attendance
+        depth = 2
+        fields = ("event", "person", "attended")
