@@ -39,6 +39,7 @@ class Attendance(models.Model):
 
     class Meta:
         ordering = ['event']
+        unique_together = ("event", "person")
 
     def __str__(self):
         return "{} {} attended the event on {}/{}/{}: {}".format(self.person.first_name, self.person.last_name, self.event.date.day, self.event.date.month, self.date.year, self.attended)
